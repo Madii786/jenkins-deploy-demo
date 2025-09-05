@@ -4,7 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME = "hammad-app"
         CONTAINER_NAME = "hammad-container"
-        PORT = "8080"
+        PORT = "9090"   // host port (change if 9090 busy)
     }
 
     stages {
@@ -18,7 +18,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    def version = env.BUILD_NUMBER
+                    def version = env.BUILD_NUMBER ?: 'local'
                     echo "Building Docker image: ${IMAGE_NAME}:${version}"
                     sh """
                         docker build -t ${IMAGE_NAME}:${version} -t ${IMAGE_NAME}:latest .
@@ -43,8 +43,8 @@ pipeline {
         stage('Run new container') {
             steps {
                 sh '''
-                  echo "Running new container..."
-                  docker run -d --restart=always -p ${PORT}:${PORT} --name $CONTAINER_NAME $IMAGE_NAME:latest
+                  echo "Running new container (host port ${PORT} -> container 8080)..."
+                  docker run -d --restart=always -p ${PORT}:8080 --name $CONTAINER_NAME $IMAGE_NAME:latest
                 '''
             }
         }
@@ -53,9 +53,9 @@ pipeline {
     post {
         always {
             sh '''
-              echo "Deployment finished. Container status:"
+              echo "=== Container status ==="
               docker ps -f name=$CONTAINER_NAME || true
-              echo "Last 100 lines of container logs (if running):"
+              echo "=== Last 100 lines of container logs ==="
               docker logs --tail 100 $CONTAINER_NAME || true
             '''
         }
